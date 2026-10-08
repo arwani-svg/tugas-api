@@ -8,80 +8,74 @@ use Illuminate\Http\Request;
 
 class BukuController extends Controller
 {
-    // GET /api/bukus (auth) - hanya buku milik sendiri
+    // tampil semua buku milik user yang login
     public function index(Request $request)
     {
-        $bukus = Buku::where('user_id', $request->user()->id)
-            ->with('user:id,name,email')
-            ->latest()
-            ->get();
+        $bukus = Buku::where('user_id', $request->user()->id)->get();
 
-        return response()->json(['success' => true, 'data' => $bukus]);
+        return response()->json($bukus);
     }
 
-    // POST /api/bukus (auth)
+    // tambah buku baru
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'judul' => 'required|string|max:255',
-            'penulis' => 'required|string|max:255',
-            'penerbit' => 'nullable|string|max:255',
-            'tahun_terbit' => 'nullable|digits:4|integer|min:1000|max:' . date('Y'),
-            'isbn' => 'nullable|string|max:50',
-            'deskripsi' => 'nullable|string',
+        $request->validate([
+            'judul' => 'required',
+            'penulis' => 'required',
         ]);
 
-        $validated['user_id'] = $request->user()->id;
-
-        $buku = Buku::create($validated);
-        $buku->load('user:id,name,email');
+        $buku = Buku::create([
+            'user_id' => $request->user()->id,
+            'judul' => $request->judul,
+            'penulis' => $request->penulis,
+            'penerbit' => $request->penerbit,
+            'tahun_terbit' => $request->tahun_terbit,
+            'isbn' => $request->isbn,
+            'deskripsi' => $request->deskripsi,
+        ]);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Buku berhasil ditambahkan.',
-            'data' => $buku,
+            'message' => 'Buku berhasil ditambah',
+            'data' => $buku
         ], 201);
     }
 
-    // GET /api/bukus/{buku} (auth + buku.owner)
-    public function show(Request $request, $id)
+    // tampil 1 buku (sudah dicek middleware buku.owner)
+    public function show($id)
     {
-        $buku = $request->attributes->get('buku_owned') ?? Buku::find($id);
-        $buku->load('user:id,name,email');
+        $buku = Buku::find($id);
 
-        return response()->json(['success' => true, 'data' => $buku]);
+        return response()->json($buku);
     }
 
-    // PUT /api/bukus/{buku} (auth + buku.owner)
+    // edit buku (sudah dicek middleware buku.owner)
     public function update(Request $request, $id)
     {
-        $buku = $request->attributes->get('buku_owned') ?? Buku::findOrFail($id);
+        $buku = Buku::find($id);
 
-        $validated = $request->validate([
-            'judul' => 'sometimes|string|max:255',
-            'penulis' => 'sometimes|string|max:255',
-            'penerbit' => 'nullable|string|max:255',
-            'tahun_terbit' => 'nullable|digits:4|integer|min:1000|max:' . date('Y'),
-            'isbn' => 'nullable|string|max:50',
-            'deskripsi' => 'nullable|string',
+        $buku->update([
+            'judul' => $request->judul ?? $buku->judul,
+            'penulis' => $request->penulis ?? $buku->penulis,
+            'penerbit' => $request->penerbit ?? $buku->penerbit,
+            'tahun_terbit' => $request->tahun_terbit ?? $buku->tahun_terbit,
+            'isbn' => $request->isbn ?? $buku->isbn,
+            'deskripsi' => $request->deskripsi ?? $buku->deskripsi,
         ]);
 
-        $buku->update($validated);
-        $buku->load('user:id,name,email');
-
         return response()->json([
-            'success' => true,
-            'message' => 'Buku berhasil diupdate.',
-            'data' => $buku,
+            'message' => 'Buku berhasil diupdate',
+            'data' => $buku
         ]);
     }
 
-    // DELETE /api/bukus/{buku} (auth + buku.owner)
-    public function destroy(Request $request, $id)
+    // hapus buku (sudah dicek middleware buku.owner)
+    public function destroy($id)
     {
-        $buku = $request->attributes->get('buku_owned') ?? Buku::findOrFail($id);
+        $buku = Buku::find($id);
         $buku->delete();
 
-        return response()->json(['success' => true, 'message' => 'Buku berhasil dihapus.']);
+        return response()->json([
+            'message' => 'Buku berhasil dihapus'
+        ]);
     }
 }

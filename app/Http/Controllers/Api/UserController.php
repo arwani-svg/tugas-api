@@ -5,90 +5,83 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    // GET /api/users (auth) - list semua user
+    // tampil semua user
     public function index()
     {
-        return response()->json([
-            'success' => true,
-            'data' => User::select('id', 'name', 'email', 'created_at')->get(),
-        ]);
+        $users = User::all();
+
+        return response()->json($users);
     }
 
-    // GET /api/users/{user} (auth + user.owner) - hanya milik sendiri
+    // tampil 1 user (hanya boleh milik sendiri, dicek middleware user.owner)
     public function show($id)
     {
         $user = User::find($id);
 
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'User tidak ditemukan.'], 404);
+        if (!$user) {
+            return response()->json(['message' => 'User tidak ditemukan'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $user]);
+        return response()->json($user);
     }
 
-    // PUT /api/users/{user} (auth + user.owner)
+    // edit user (hanya boleh milik sendiri)
     public function update(Request $request, $id)
     {
         $user = User::find($id);
 
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'User tidak ditemukan.'], 404);
+        if (!$user) {
+            return response()->json(['message' => 'User tidak ditemukan'], 404);
         }
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
-            'password' => 'sometimes|string|min:6|confirmed',
-        ]);
-
-        $user->update($validated);
+        if ($request->name) {
+            $user->name = $request->name;
+        }
+        if ($request->email) {
+            $user->email = $request->email;
+        }
+        if ($request->password) {
+            $user->password = Hash::make($request->password);
+        }
+        $user->save();
 
         return response()->json([
-            'success' => true,
-            'message' => 'User berhasil diupdate.',
-            'data' => $user,
+            'message' => 'User berhasil diupdate',
+            'data' => $user
         ]);
     }
 
-    // DELETE /api/users/{user} (auth + user.owner)
+    // hapus user (hanya boleh milik sendiri)
     public function destroy($id)
     {
         $user = User::find($id);
 
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'User tidak ditemukan.'], 404);
+        if (!$user) {
+            return response()->json(['message' => 'User tidak ditemukan'], 404);
         }
 
-        // hapus token dulu agar bersih
-        $user->tokens()->delete();
         $user->delete();
 
-        return response()->json(['success' => true, 'message' => 'User berhasil dihapus.']);
+        return response()->json(['message' => 'User berhasil dihapus']);
     }
 
-    // GET /api/users/{user}/bukus (auth) - akses buku dari user via endpoint api
-    // Hanya boleh akses bukus milik sendiri, user lain -> 403
+    // tampil buku-buku milik user tertentu
+    // contoh: GET /api/users/1/bukus
+    // kalau id nya bukan milik sendiri, ditolak 403
     public function bukus(Request $request, $userId)
     {
-        if ((int) $userId !== $request->user()->id) {
+        if ($userId != $request->user()->id) {
             return response()->json([
-                'success' => false,
-                'message' => 'Forbidden: tidak bisa melihat buku milik user lain.',
+                'message' => 'Tidak bisa lihat buku milik user lain'
             ], 403);
         }
 
-        $target = User::with('bukus')->find($userId);
+        $user = User::find($userId);
 
-        if (! $target) {
-            return response()->json(['success' => false, 'message' => 'User tidak ditemukan.'], 404);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $target->bukus,
-        ]);
+        return response()->json($user->bukus);
     }
 }

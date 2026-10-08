@@ -4,24 +4,20 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
+// Middleware sederhana untuk user.
+// User hanya boleh lihat / edit / hapus datanya sendiri.
 class EnsureUserOwner
 {
-    /**
-     * Middleware: user hanya boleh get/update/delete data dirinya sendiri.
-     * Parameter route: {user} atau {id}
-     */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
-        $param = $request->route('user') ?? $request->route('id');
+        // ambil id user dari url, contoh: /api/users/2
+        $id = $request->route('user');
 
-        $targetId = is_object($param) ? $param->id : (int) $param;
-
-        if ($targetId !== $request->user()->id) {
+        // kalau id di url beda dengan id yang login, tolak
+        if ($id != $request->user()->id) {
             return response()->json([
-                'success' => false,
-                'message' => 'Forbidden: tidak bisa akses data user lain.',
+                'message' => 'Tidak bisa akses data user lain'
             ], 403);
         }
 

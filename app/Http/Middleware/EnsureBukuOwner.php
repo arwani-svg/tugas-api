@@ -5,40 +5,30 @@ namespace App\Http\Middleware;
 use App\Models\Buku;
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
+// Middleware sederhana untuk tugas.
+// Tujuannya: user tidak boleh buka / edit / hapus buku milik user lain.
 class EnsureBukuOwner
 {
-    /**
-     * Middleware: pastikan buku yang diakses milik user yang login.
-     * Dipakai untuk show / update / delete buku.
-     * Jika bukan miliknya -> 403 Forbidden.
-     */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
-        // Laravel route model binding: parameter bisa bernama {buku} atau {id}
-        $bukuParam = $request->route('buku') ?? $request->route('id');
+        // ambil id buku dari url, contoh: /api/bukus/1
+        $id = $request->route('buku');
 
-        $buku = $bukuParam instanceof Buku
-            ? $bukuParam
-            : Buku::find($bukuParam);
+        $buku = Buku::find($id);
 
-        if (! $buku) {
+        if (!$buku) {
             return response()->json([
-                'success' => false,
-                'message' => 'Buku tidak ditemukan.',
+                'message' => 'Buku tidak ditemukan'
             ], 404);
         }
 
-        if ($buku->user_id !== $request->user()->id) {
+        // kalau buku ini bukan milik user yang login, tolak
+        if ($buku->user_id != $request->user()->id) {
             return response()->json([
-                'success' => false,
-                'message' => 'Forbidden: buku ini milik user lain, tidak bisa diakses.',
+                'message' => 'Tidak bisa akses, ini buku milik user lain'
             ], 403);
         }
-
-        // tempel model agar controller tidak query ulang
-        $request->attributes->set('buku_owned', $buku);
 
         return $next($request);
     }

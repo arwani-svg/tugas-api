@@ -9,75 +9,68 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    // POST /api/register
+    // daftar user baru
     public function register(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
+        $request->validate([
+            'name' => 'required',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:6',
         ]);
 
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'], // auto-hashed via casts
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
         ]);
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $user->createToken('token')->plainTextToken;
 
         return response()->json([
-            'success' => true,
-            'message' => 'Register berhasil.',
-            'data' => $user,
-            'token' => $token,
+            'message' => 'Register berhasil',
+            'user' => $user,
+            'token' => $token
         ], 201);
     }
 
-    // POST /api/login
+    // login, nanti dapat token
     public function login(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'email' => 'required|email',
-            'password' => 'required|string',
+            'password' => 'required',
         ]);
 
-        $user = User::where('email', $validated['email'])->first();
+        $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'success' => false,
-                'message' => 'Email atau password salah.',
+                'message' => 'Email atau password salah'
             ], 401);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $user->createToken('token')->plainTextToken;
 
         return response()->json([
-            'success' => true,
-            'message' => 'Login berhasil.',
-            'data' => $user,
-            'token' => $token,
+            'message' => 'Login berhasil',
+            'user' => $user,
+            'token' => $token
         ]);
     }
 
-    // POST /api/logout (auth)
+    // logout, hapus token yang dipakai
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'success' => true,
-            'message' => 'Logout berhasil.',
+            'message' => 'Logout berhasil'
         ]);
     }
 
-    // GET /api/me (auth)
+    // lihat profil sendiri
     public function me(Request $request)
     {
-        return response()->json([
-            'success' => true,
-            'data' => $request->user(),
-        ]);
+        return response()->json($request->user());
     }
 }
